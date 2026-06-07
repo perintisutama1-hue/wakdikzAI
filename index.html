@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WAKDIKZ AI — Chart Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b10;
+    --surface: #0d1117;
+    --surface2: #131920;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --green: #00ff88;
+    --red: #ff3366;
+    --yellow: #ffd700;
+    --text: #e8edf2;
+    --muted: #5a7a8a;
+    --font-mono: 'Space Mono', monospace;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,212,255,0.4);
+  }
+
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 28px 0;
+  }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  /* PANELS */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .panel-title span {
+    color: var(--accent);
+  }
+
+  .panel-body {
+    padding: 20px;
+  }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background: rgba(0,0,0,0.2);
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.04);
+    transform: scale(1.01);
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    filter: grayscale(0.3);
+  }
+
+  .upload-text {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .upload-text strong {
+    color: var(--accent);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+  }
+
+  /* IMAGE PREVIEW */
+  .preview-wrap {
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    display: none;
+  }
+
+  .preview-wrap.active { display: block; }
+
+  .preview-wrap img {
+    width: 100%;
+    display: block;
+    border-radius: 8px;
+  }
+
+  .preview-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,255,136,0.15);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  .change-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px;
+    border-radius: 7px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .change-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* PAIR + TIMEFRAME */
+  .meta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .field label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .field input, .field select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+  }
+
+  .field select option {
+    background: var(--surface2);
+  }
+
+  /* ANALYZE BTN */
+  .analyze-btn {
+    margin-top: 18px;
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #0099bb);
+    color: #000;
+    border: none;
+    padding: 14px;
+    border-radius: 9px;
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .analyze-btn::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -60%;
+    width: 40%; height: 200%;
+    background: rgba(255,255,255,0.3);
+    transform: skewX(-20deg);
+    transition: left 0.5s;
+  }
+
+  .analyze-btn:hover::before { left: 120%; }
+
+  .analyze-btn:hover {
+    box-shadow: 0 0 30px rgba(0,212,255,0.4);
+    transform: translateY(-1px);
+  }
+
+  .analyze-btn:disabled {
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .analyze-btn:disabled::before { display: none; }
+
+  /* RIGHT PANEL — OUTPUT */
+  .right-panel {
+    grid-column: 1;
+  }
+
+  @media (min-width: 769px) {
+    .right-panel {
+      grid-column: 2;
+      grid-row: 1;
+    }
+  }
+
+  /* LOADING */
+  .loading-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 20px;
+    gap: 16px;
+  }
+
+  .loading-state.active { display: flex; }
+
+  .scanner {
+    width: 60px; height: 60px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    animation: blink 1.2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 20px;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .empty-icon { font-size: 3rem; opacity: 0.3; }
+
+  .empty-text {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.7;
+    letter-spacing: 1px;
+  }
+
+  /* RESULT */
+  .result-body {
+    display: none;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: 600px;
+  }
+
+  .result-body.active { display: block; }
+
+  /* SECTIONS */
+  .result-section {
+    margin-bottom: 20px;
+    animation: fadeUp 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-section:nth-child(1) { animation-delay: 0.05s; }
+  .result-section:nth-child(2) { animation-delay: 0.1s; }
+  .result-section:nth-child(3) { animation-delay: 0.15s; }
+  .result-section:nth-child(4) { animation-delay: 0.2s; }
+  .result-section:nth-child(5) { animation-delay: 0.25s; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* BIAS BADGE */
+  .bias-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  .bias-badge.bullish {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--green);
+  }
+
+  .bias-badge.bearish {
+    background: rgba(255,51,102,0.1);
+    border: 1px solid rgba(255,51,102,0.3);
+    color: var(--red);
+  }
+
+  .bias-badge.neutral {
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    color: var(--yellow);
+  }
+
+  /* ZONES */
+  .zones-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .zone-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 13px;
+    border-left: 3px solid;
+  }
+
+  .zone-item.resistance { border-color: var(--red); }
+  .zone-item.support { border-color: var(--green); }
+
+  .zone-type {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .zone-price {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .zone-item.resistance .zone-price { color: var(--red); }
+  .zone-item.support .zone-price { color: var(--green); }
+
+  .zone-note {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* TEXT CONTENT */
+  .result-text {
+    font-size: 0.85rem;
+    color: #a8bfcc;
+    line-height: 1.75;
+  }
+
+  .result-text strong {
+    color: var(--accent);
+  }
+
+  /* SIGNAL */
+  .signal-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+
+  .signal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    font-size: 0.8rem;
+  }
+
+  .signal-row:last-child { border-bottom: none; }
+
+  .signal-key {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .signal-val {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .signal-val.up { color: var(--green); }
+  .signal-val.down { color: var(--red); }
+  .signal-val.neutral { color: var(--yellow); }
+  .signal-val.default { color: var(--text); }
+
+  /* RAW TEXT */
+  .raw-text {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: #8faab8;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+
+  /* SCROLLBAR */
+  .result-body::-webkit-scrollbar { width: 4px; }
+  .result-body::-webkit-scrollbar-track { background: transparent; }
+  .result-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* FOOTER */
+  footer {
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-note {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .footer-note span { color: var(--accent2); }
+
+  /* DISCLAIMER */
+  .disclaimer {
+    background: rgba(255,107,53,0.07);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: rgba(255,107,53,0.7);
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-text">WAKDIKZAI</div>
+      <div class="logo-sub">// chart analyzer</div>
+    </div>
+    <div class="status-pill">
+      <div class="dot"></div>
+      AI ONLINE
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- LEFT: INPUT -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> INPUT CHART</div>
+      </div>
+      <div class="panel-body">
+
+        <!-- Upload zone -->
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept="image/*">
+          <div class="upload-icon">📈</div>
+          <div class="upload-text">
+            <strong>DROP CHART DI SINI</strong>
+            atau klik untuk pilih file<br>
+            <small style="font-size:0.6rem;opacity:0.6">PNG · JPG · WEBP · max 10MB</small>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="preview-wrap" id="previewWrap">
+          <img id="previewImg" src="" alt="Chart Preview">
+          <div class="preview-badge">✓ LOADED</div>
+          <button class="change-btn" id="changeBtn">[ GANTI CHART ]</button>
+        </div>
+
+        <!-- Meta -->
+        <div class="meta-row">
+          <div class="field">
+            <label>PAIR</label>
+            <input type="text" id="pairInput" placeholder="XAU/USD" value="XAU/USD">
+          </div>
+          <div class="field">
+            <label>TIMEFRAME</label>
+            <select id="tfSelect">
+              <option>M1</option>
+              <option>M5</option>
+              <option>M15</option>
+              <option>M30</option>
+              <option selected>H1</option>
+              <option>H4</option>
+              <option>D1</option>
+              <option>W1</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label>FOKUS ANALISA (opsional)</label>
+          <input type="text" id="focusInput" placeholder="cth: cari entry buy, atau ada reversal ga?">
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" disabled>ANALYZE CHART</button>
+
+        <div class="disclaimer">
+          ⚠ BUKAN FINANCIAL ADVICE — Hasil analisa AI hanya untuk edukasi. Selalu gunakan risk management sendiri.
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: OUTPUT -->
+    <div class="panel right-panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> HASIL ANALISA</div>
+        <div id="pairLabel" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent)"></div>
+      </div>
+
+      <!-- Empty -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">
+          UPLOAD CHART DULU<br>
+          TERUS KLIK ANALYZE<br>
+          <br>
+          <span style="font-size:0.65rem;opacity:0.5">AI AKAN ANALISA SECARA OTOMATIS</span>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-state" id="loadingState">
+        <div class="scanner"></div>
+        <div class="loading-text">SCANNING CHART...</div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-body" id="resultBody"></div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-note">POWERED BY <span>wakdikz</span> · VISION ANALYSIS</div>
+    <div class="footer-note" style="opacity:0.4">v1.0 · FOREXAI</div>
+  </footer>
+</div>
+
+<script>
+  let imageBase64 = null;
+  let imageMediaType = null;
+
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const previewWrap = document.getElementById('previewWrap');
+  const previewImg = document.getElementById('previewImg');
+  const changeBtn = document.getElementById('changeBtn');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const emptyState = document.getElementById('emptyState');
+  const loadingState = document.getElementById('loadingState');
+  const resultBody = document.getElementById('resultBody');
+  const pairLabel = document.getElementById('pairLabel');
+
+  // Drag events
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  changeBtn.addEventListener('click', () => {
+    previewWrap.classList.remove('active');
+    uploadZone.style.display = 'block';
+    analyzeBtn.disabled = true;
+    imageBase64 = null;
+    fileInput.value = '';
+  });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) return alert('File harus berupa gambar!');
+    if (file.size > 10 * 1024 * 1024) return alert('File max 10MB!');
+
+    imageMediaType = file.type;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target.result;
+      imageBase64 = result.split(',')[1];
+      previewImg.src = result;
+      uploadZone.style.display = 'none';
+      previewWrap.classList.add('active');
+      analyzeBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  analyzeBtn.addEventListener('click', analyzeChart);
+
+  async function analyzeChart() {
+    if (!imageBase64) return;
+
+    const pair = document.getElementById('pairInput').value || 'FOREX PAIR';
+    const tf = document.getElementById('tfSelect').value;
+    const focus = document.getElementById('focusInput').value;
+
+    pairLabel.textContent = `${pair} · ${tf}`;
+
+    // UI state
+    emptyState.style.display = 'none';
+    loadingState.classList.add('active');
+    resultBody.classList.remove('active');
+    resultBody.innerHTML = '';
+    analyzeBtn.disabled = true;
+
+    const systemPrompt = `Kamu adalah analis forex profesional yang sangat berpengalaman. Kamu menganalisa chart menggunakan pendekatan price action, Smart Money Concept (SMC), supply & demand, dan technical analysis klasik.
+
+Saat menganalisa chart, kamu HARUS memberikan output dalam format JSON yang STRICT berikut (tidak ada teks di luar JSON):
+
+{
+  "bias": "BULLISH" | "BEARISH" | "NEUTRAL",
+  "bias_strength": "STRONG" | "MODERATE" | "WEAK",
+  "trend": {
+    "major": "deskripsi trend major",
+    "minor": "deskripsi trend minor"
+  },
+  "zones": [
+    {
+      "type": "RESISTANCE" | "SUPPORT",
+      "price_level": "level harga atau range misal 1920-1925",
+      "strength": "STRONG" | "MEDIUM" | "WEAK",
+      "note": "penjelasan singkat kenapa level ini penting"
+    }
+  ],
+  "key_levels": {
+    "nearest_resistance": "harga",
+    "nearest_support": "harga",
+    "key_high": "harga atau N/A",
+    "key_low": "harga atau N/A"
+  
